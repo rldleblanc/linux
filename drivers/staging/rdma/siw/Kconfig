@@ -1,0 +1,12 @@
+config INFINIBAND_SIW
+	tristate "Software iWARP driver"
+	depends on INET && PCI && INFINIBAND
+	---help---
+	This driver implements the RDMA over TCP/IP iWARP
+	in software allowing any standard Ethernet adapter
+	to participate in RDMA Reliable Connection (RC)
+	communications either with another soft iWAP (siw)
+	device or hardware iWARP adapter.
+
+	https://github.com/zrlio/softiwarp
+	https://github.com/martinetd/softiwarp-kernel
