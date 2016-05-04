@@ -129,7 +129,8 @@ int siw_dealloc_ucontext(struct ib_ucontext *ofa_ctx)
 	return 0;
 }
 
-int siw_query_device(struct ib_device *ofa_dev, struct ib_device_attr *attr)
+int siw_query_device(struct ib_device *ofa_dev, struct ib_device_attr *attr,
+		     struct ib_udata *uhw)
 {
 	struct siw_dev *sdev = siw_dev_ofa2siw(ofa_dev);
 	/*
@@ -351,8 +352,10 @@ void siw_qp_put_ref(struct ib_qp *ofa_qp)
 }
 
 int siw_no_mad(struct ib_device *ofa_dev, int flags, u8 port,
-			    struct ib_wc *wc, struct ib_grh *grh,
-			    struct ib_mad *in_mad, struct ib_mad *out_mad)
+			    const struct ib_wc *wc, const struct ib_grh *grh,
+			    const struct ib_mad_hdr *in_mad, size_t in_mad_size,
+			    struct ib_mad_hdr *out_mad, size_t *out_mad_size,
+			    u16 *out_mad_pkey_index)
 {
 	return -ENOSYS;
 }
@@ -662,9 +665,9 @@ int siw_destroy_qp(struct ib_qp *ofa_qp)
 	up_write(&qp->state_lock);
 
 	if (qp->rx_ctx.crc_enabled)
-		crypto_free_hash(qp->rx_ctx.mpa_crc_hd.tfm);
+		crypto_free_shash(qp->rx_ctx.mpa_crc_hd.tfm);
 	if (qp->tx_ctx.crc_enabled)
-		crypto_free_hash(qp->tx_ctx.mpa_crc_hd.tfm);
+		crypto_free_shash(qp->tx_ctx.mpa_crc_hd.tfm);
 
 	/* Drop references */
 	siw_cq_put(qp->scq);
@@ -905,8 +908,8 @@ int siw_post_send(struct ib_qp *ofa_qp, struct ib_send_wr *wr,
 			/*
 			 * NOTE: zero length RREAD is allowed!
 			 */
-			wqe->wr.rread.raddr = wr->wr.rdma.remote_addr;
-			wqe->wr.rread.rtag = wr->wr.rdma.rkey;
+			wqe->wr.rread.raddr = rdma_wr(wr)->remote_addr;
+			wqe->wr.rread.rtag = rdma_wr(wr)->rkey;
 			wqe->wr.rread.num_sge = 1;
 			wqe->bytes = rv;
 			break;
@@ -926,8 +929,8 @@ int siw_post_send(struct ib_qp *ofa_qp, struct ib_send_wr *wr,
 				rv = -EINVAL;
 				break;
 			}
-			wqe->wr.write.raddr = wr->wr.rdma.remote_addr;
-			wqe->wr.write.rtag = wr->wr.rdma.rkey;
+			wqe->wr.write.raddr = rdma_wr(wr)->remote_addr;
+			wqe->wr.write.rtag = rdma_wr(wr)->rkey;
 			wqe->bytes = rv;
 			break;
 
@@ -1120,8 +1123,8 @@ int siw_destroy_cq(struct ib_cq *ofa_cq)
  * @udata:	used to provide CQ ID back to user.
  */
 
-struct ib_cq *siw_create_cq(struct ib_device *ofa_dev, int size,
-			    int vec /* unused */,
+struct ib_cq *siw_create_cq(struct ib_device *ofa_dev,
+			    const struct ib_cq_init_attr *attr,
 			    struct ib_ucontext *ib_context,
 			    struct ib_udata *udata)
 {
@@ -1135,8 +1138,8 @@ struct ib_cq *siw_create_cq(struct ib_device *ofa_dev, int size,
 		rv = -ENOMEM;
 		goto err_out;
 	}
-	if (size < 1 || size > SIW_MAX_CQE) {
-		dprint(DBG_ON, ": CQE: %d\n", size);
+	if (attr->cqe < 1 || attr->cqe > SIW_MAX_CQE) {
+		dprint(DBG_ON, ": CQE: %d\n", attr->cqe);
 		rv = -EINVAL;
 		goto err_out;
 	}
@@ -1146,7 +1149,7 @@ struct ib_cq *siw_create_cq(struct ib_device *ofa_dev, int size,
 		rv = -ENOMEM;
 		goto err_out;
 	}
-	cq->ofa_cq.cqe = size - 1;
+	cq->ofa_cq.cqe = attr->cqe - 1;
 
 	rv = siw_cq_add(sdev, cq);
 	if (rv)

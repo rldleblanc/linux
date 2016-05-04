@@ -46,7 +46,7 @@
 #include <linux/in.h>
 #include <linux/fs.h>
 #include <linux/netdevice.h>
-#include <linux/crypto.h>
+#include <crypto/hash.h>
 #include <linux/resource.h>	/* MLOCK_LIMIT */
 #include <linux/module.h>
 
@@ -257,7 +257,6 @@ enum siw_wr_opcode {
 	SIW_WR_ATOMIC_CMP_AND_SWP	= IB_WR_ATOMIC_CMP_AND_SWP,
 	SIW_WR_ATOMIC_FETCH_AND_ADD	= IB_WR_ATOMIC_FETCH_AND_ADD,
 	SIW_WR_INVAL_STAG		= IB_WR_LOCAL_INV,
-	SIW_WR_FASTREG			= IB_WR_FAST_REG_MR,
 
 	SIW_WR_RECEIVE,
 	SIW_WR_RDMA_READ_RESP,		/* pseudo WQE */
@@ -519,7 +518,7 @@ struct siw_iwarp_rx {
 		struct siw_mem	*mem; /* WRITE */
 	} dest;
 
-	struct hash_desc	mpa_crc_hd;
+	struct shash_desc	mpa_crc_hd;
 	/*
 	 * Next expected DDP MSN for each QN +
 	 * expected steering tag +
@@ -618,7 +617,7 @@ struct siw_iwarp_tx {
 	u16			ctrl_sent;
 	int			bytes_unsent;	/* ddp payload bytes */
 
-	struct hash_desc	mpa_crc_hd;
+	struct shash_desc	mpa_crc_hd;
 
 	atomic_t		in_use;		/* tx currently under way */
 
@@ -759,8 +758,9 @@ struct ib_qp *siw_get_ofaqp(struct ib_device *, int);
 void siw_qp_get_ref(struct ib_qp *);
 void siw_qp_put_ref(struct ib_qp *);
 
-int siw_no_mad(struct ib_device *, int, u8, struct ib_wc *, struct ib_grh *,
-	       struct ib_mad *, struct ib_mad *);
+int siw_no_mad(struct ib_device *, int, u8, const struct ib_wc *,
+	       const struct ib_grh *, const struct ib_mad_hdr *,
+	       size_t, struct ib_mad_hdr *, size_t *, u16 *);
 
 enum siw_qp_state siw_map_ibstate(enum ib_qp_state);
 
@@ -826,8 +826,8 @@ int siw_tcp_rx_data(read_descriptor_t *rd_desc, struct sk_buff *skb,
 		    unsigned int off, size_t len);
 
 /* MPA utilities */
-int siw_crc_array(struct hash_desc *, u8 *, size_t);
-int siw_crc_page(struct hash_desc *, struct page *, int, int);
+int siw_crc_array(struct shash_desc *, u8 *, size_t);
+int siw_crc_page(struct shash_desc *, struct page *, int, int);
 
 
 /* Varia */

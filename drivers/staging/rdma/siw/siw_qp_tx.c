@@ -62,7 +62,7 @@ static DEFINE_PER_CPU(atomic_t, siw_workq_len);
 
 static inline int siw_crc_txhdr(struct siw_iwarp_tx *ctx)
 {
-	crypto_hash_init(&ctx->mpa_crc_hd);
+	crypto_shash_init(&ctx->mpa_crc_hd);
 	return siw_crc_array(&ctx->mpa_crc_hd, (u8 *)&ctx->pkt,
 			     ctx->ctrl_len);
 }
@@ -180,7 +180,7 @@ static int siw_qp_prepare_tx(struct siw_iwarp_tx *c_tx)
 		if (c_tx->crc_enabled) {
 			if (siw_crc_txhdr(c_tx) != 0)
 				return -EINVAL;
-			crypto_hash_final(&c_tx->mpa_crc_hd, (u8 *)crc);
+			crypto_shash_final(&c_tx->mpa_crc_hd, (u8 *)crc);
 		}
 	}
 	c_tx->ctrl_len += MPA_CRC_SIZE;
@@ -505,7 +505,7 @@ sge_done:
 	if (!c_tx->crc_enabled)
 		c_tx->trailer.crc = 0;
 	else if (do_crc)
-		crypto_hash_final(&c_tx->mpa_crc_hd, (u8 *)&c_tx->trailer.crc);
+		crypto_shash_final(&c_tx->mpa_crc_hd, (u8 *)&c_tx->trailer.crc);
 
 	data_len = c_tx->bytes_unsent;
 
