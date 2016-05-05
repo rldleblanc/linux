@@ -47,11 +47,6 @@
 #include "siw.h"
 #include "siw_debug.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 2, 0)
-/* Older kernels don't have pinned pages acounting */
-#define pinned_vm       locked_vm
-#endif
-
 static void siw_umem_update_stats(struct work_struct *work)
 {
 	struct siw_umem *umem = container_of(work, struct siw_umem, work);
@@ -264,24 +259,6 @@ static void siw_dma_unmap_sg(struct ib_device *dev, struct scatterlist *sgl,
 	/* NOP */
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
-static u64 siw_dma_address(struct ib_device *dev, struct scatterlist *sg)
-{
-	u64 kva = (u64) page_address(sg_page(sg));
-
-	if (kva)
-		kva += sg->offset;
-
-	return kva;
-}
-
-static unsigned int siw_dma_len(struct ib_device *dev,
-				   struct scatterlist *sg)
-{
-	return sg_dma_len(sg);
-}
-#endif
-
 static void siw_sync_single_for_cpu(struct ib_device *dev, u64 addr,
 				    size_t size, enum dma_data_direction dir)
 {
@@ -324,29 +301,12 @@ struct ib_dma_mapping_ops siw_dma_mapping_ops = {
 	.unmap_page		= siw_dma_unmap_page,
 	.map_sg			= siw_dma_map_sg,
 	.unmap_sg		= siw_dma_unmap_sg,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
-	.dma_address		= siw_dma_address,
-	.dma_len		= siw_dma_len,
-#endif
 	.sync_single_for_cpu	= siw_sync_single_for_cpu,
 	.sync_single_for_device	= siw_sync_single_for_device,
 	.alloc_coherent		= siw_dma_alloc_coherent,
 	.free_coherent		= siw_dma_free_coherent
 };
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-static void *siw_dma_generic_alloc_coherent(struct device *dev, size_t size,
-					    dma_addr_t *dma_handle, gfp_t gfp)
-{
-	return siw_dma_alloc_coherent(NULL, size, dma_handle, gfp);
-}
-
-static void siw_dma_generic_free_coherent(struct device *dev, size_t size,
-					  void *vaddr, dma_addr_t dma_handle)
-{
-	siw_dma_free_coherent(NULL, size, vaddr, dma_handle);
-}
-#else
 static void *siw_dma_generic_alloc(struct device *dev, size_t size,
 				   dma_addr_t *dma_handle, gfp_t gfp,
 				   struct dma_attrs *attrs)
@@ -360,7 +320,6 @@ static void siw_dma_generic_free(struct device *dev, size_t size,
 {
 	siw_dma_free_coherent(NULL, size, vaddr, dma_handle);
 }
-#endif
 
 static dma_addr_t siw_dma_generic_map_page(struct device *dev,
 					   struct page *page,
@@ -452,13 +411,8 @@ static int siw_dma_generic_set_mask(struct device *dev, u64 mask)
 }
 
 struct dma_map_ops siw_dma_generic_ops = {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
-	.alloc_coherent		= siw_dma_generic_alloc_coherent,
-	.free_coherent		= siw_dma_generic_free_coherent,
-#else
 	.alloc			= siw_dma_generic_alloc,
 	.free			= siw_dma_generic_free,
-#endif
 	.map_page		= siw_dma_generic_map_page,
 	.unmap_page		= siw_dma_generic_unmap_page,
 	.map_sg			= siw_dma_generic_map_sg,

@@ -99,11 +99,7 @@ struct siw_cep {
 
 	/* Saved upcalls of socket llp.sock */
 	void    (*sk_state_change)(struct sock *sk);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
-	void    (*sk_data_ready)(struct sock *sk, int bytes);
-#else
 	void    (*sk_data_ready)(struct sock *sk);
-#endif
 	void    (*sk_write_space)(struct sock *sk);
 	void    (*sk_error_report)(struct sock *sk);
 };

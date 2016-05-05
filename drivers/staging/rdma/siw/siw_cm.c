@@ -88,11 +88,7 @@ static int siw_sock_nodelay(struct socket *sock)
 }
 
 static void siw_cm_llp_state_change(struct sock *);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
-static void siw_cm_llp_data_ready(struct sock *, int);
-#else
 static void siw_cm_llp_data_ready(struct sock *);
-#endif
 static void siw_cm_llp_write_space(struct sock *);
 static void siw_cm_llp_error_report(struct sock *);
 
@@ -359,10 +355,8 @@ static int siw_cm_upcall(struct siw_cep *cep, enum iw_cm_event_type reason,
 		to_sockaddr_in(event.remote_addr) = cep->llp.raddr;
 	}
 	if (reason == IW_CM_EVENT_CONNECT_REQUEST) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0)
 		event.ird = cep->sdev->attrs.max_ird;
 		event.ord = cep->sdev->attrs.max_ord;
-#endif
 		event.provider_data = cep;
 		cm_id = cep->listen_cep->cm_id;
 	} else
@@ -1148,11 +1142,7 @@ int siw_cm_queue_work(struct siw_cep *cep, enum siw_work_type type)
 }
 
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
-static void siw_cm_llp_data_ready(struct sock *sk, int flags)
-#else
 static void siw_cm_llp_data_ready(struct sock *sk)
-#endif
 {
 	struct siw_cep	*cep;
 
@@ -1164,12 +1154,7 @@ static void siw_cm_llp_data_ready(struct sock *sk)
 		goto out;
 	}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
-	dprint(DBG_CM, "(): cep 0x%p, state: %d, flags %x\n", cep,
-		cep->state, flags);
-#else
 	dprint(DBG_CM, "(): cep 0x%p, state: %d\n", cep, cep->state);
-#endif
 	switch (cep->state) {
 
 	case SIW_EPSTATE_RDMA_MODE:

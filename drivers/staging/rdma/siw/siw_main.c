@@ -109,11 +109,7 @@ static void siw_device_register(struct siw_dev *sdev)
 	struct ib_device *ofa_dev = &sdev->ofa_dev;
 	int rv, i;
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 34) 
 	rv = ib_register_device(ofa_dev, NULL);
-#else
-	rv = ib_register_device(ofa_dev);
-#endif
 	if (rv) {
 		dprint(DBG_DM|DBG_ON, "(dev=%s): "
 		       "ib_register_device failed: rv=%d\n", ofa_dev->name, rv);
@@ -421,11 +417,7 @@ out:
 static int siw_netdev_event(struct notifier_block *nb, unsigned long event,
 			    void *arg)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
-	struct net_device	*netdev = arg;
-#else
 	struct net_device	*netdev = netdev_notifier_info_to_dev(arg);
-#endif
 	struct in_device	*in_dev;
 	struct siw_dev		*sdev;
 

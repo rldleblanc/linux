@@ -105,7 +105,8 @@ static inline int siw_crc_rxhdr(struct siw_iwarp_rx *ctx)
 {
 	crypto_shash_init(&ctx->mpa_crc_hd);
 
-	return siw_crc_array(&ctx->mpa_crc_hd, (u8 *)&ctx->hdr,
+	//return siw_crc_array(&ctx->mpa_crc_hd, (u8 *)&ctx->hdr,
+	return crypto_shash_update(&ctx->mpa_crc_hd, (u8 *)&ctx->hdr,
 			     ctx->fpdu_part_rcvd);
 }
 
@@ -145,11 +146,7 @@ static int siw_rx_umem(struct siw_iwarp_rx *rctx, struct siw_umem *umem,
 
 		bytes  = min(len, (int)PAGE_SIZE - pg_off);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 37)
-		dest = kmap_atomic(p, KM_SOFTIRQ0);
-#else
 		dest = kmap_atomic(p);
-#endif
 		rv = skb_copy_bits(rctx->skb, rctx->skb_offset, dest + pg_off,
 				   bytes);
 
@@ -159,8 +156,10 @@ static int siw_rx_umem(struct siw_iwarp_rx *rctx, struct siw_umem *umem,
 
 		if (likely(!rv)) {
 			if (rctx->crc_enabled)
-				rv = siw_crc_page(&rctx->mpa_crc_hd, p, pg_off,
-						  bytes);
+				// rv = siw_crc_page(&rctx->mpa_crc_hd, p, pg_off,
+				// 		  bytes);
+				rv = crypto_shash_update(&rctx->mpa_crc_hd,
+							 dest + pg_off, bytes);
 
 			rctx->skb_offset += bytes;
 			copied += bytes;
@@ -169,11 +168,7 @@ static int siw_rx_umem(struct siw_iwarp_rx *rctx, struct siw_umem *umem,
 			pg_off = 0;
 		}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 37)
-		kunmap_atomic(dest, KM_SOFTIRQ0);
-#else
 		kunmap_atomic(dest);
-#endif
 
 		if (unlikely(rv)) {
 			rctx->skb_copied += copied;
@@ -204,7 +199,8 @@ static inline int siw_rx_kva(struct siw_iwarp_rx *rctx, void *kva, int len)
 		rctx->skb_copied += len;
 		rctx->skb_new -= len;
 		if (rctx->crc_enabled) {
-			rv = siw_crc_array(&rctx->mpa_crc_hd, kva, len);
+			//rv = siw_crc_array(&rctx->mpa_crc_hd, kva, len);
+			rv = crypto_shash_update(&rctx->mpa_crc_hd, kva, len);
 			if (rv)
 				goto done;
 		}
@@ -903,8 +899,10 @@ static int siw_get_trailer(struct siw_qp *qp, struct siw_iwarp_rx *rctx)
 		if (!rctx->crc_enabled)
 			return 0;
 
-		if (rctx->pad && siw_crc_array(&rctx->mpa_crc_hd,
-					       tbuf, rctx->pad) != 0)
+		//if (rctx->pad && siw_crc_array(&rctx->mpa_crc_hd,
+		//			       tbuf, rctx->pad) != 0)
+		if (rctx->pad && crypto_shash_update(&rctx->mpa_crc_hd,
+						     tbuf, rctx->pad) != 0)
 			return -EINVAL;
 
 		crypto_shash_final(&rctx->mpa_crc_hd, (u8 *)&crc_own);

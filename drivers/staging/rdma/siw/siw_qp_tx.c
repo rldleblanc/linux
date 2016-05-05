@@ -63,7 +63,8 @@ static DEFINE_PER_CPU(atomic_t, siw_workq_len);
 static inline int siw_crc_txhdr(struct siw_iwarp_tx *ctx)
 {
 	crypto_shash_init(&ctx->mpa_crc_hd);
-	return siw_crc_array(&ctx->mpa_crc_hd, (u8 *)&ctx->pkt,
+	//return siw_crc_array(&ctx->mpa_crc_hd, (u8 *)&ctx->pkt,
+	return crypto_shash_update(&ctx->mpa_crc_hd, (u8 *)&ctx->pkt,
 			     ctx->ctrl_len);
 }
 
@@ -423,7 +424,8 @@ static int siw_tx_hdt(struct siw_iwarp_tx *c_tx, struct socket *s)
 			iov[seg].iov_len = sge_len;
 
 			if (do_crc)
-				siw_crc_array(&c_tx->mpa_crc_hd,
+				//siw_crc_array(&c_tx->mpa_crc_hd,
+				crypto_shash_update(&c_tx->mpa_crc_hd,
 					      iov[seg].iov_base, sge_len);
 			sge_off += sge_len;
 			data_len -= sge_len;
@@ -446,17 +448,21 @@ static int siw_tx_hdt(struct siw_iwarp_tx *c_tx, struct socket *s)
 					iov[seg].iov_base = kmap(p) + fp_off;
 					iov[seg].iov_len = plen;
 				}
-				if (do_crc)
-					siw_crc_page(&c_tx->mpa_crc_hd, p,
-						     fp_off, plen);
+//				if (do_crc)
+//					//siw_crc_page(&c_tx->mpa_crc_hd, p,
+//					//	     fp_off, plen);
+//					crypto_shash_update(&c_tx->mpa_crc_hd,
+//							    (void *)(sge->addr + sge_off),
+//							    plen);
 			} else {
 				u64 pa = ((sge->addr + sge_off) & PAGE_MASK);
 				page_array[seg] = virt_to_page(pa);
-				if (do_crc)
-					siw_crc_array(&c_tx->mpa_crc_hd,
-						(void *)(sge->addr + sge_off),
-						plen);
 			}
+			if (do_crc)
+				//siw_crc_array(&c_tx->mpa_crc_hd,
+				crypto_shash_update(&c_tx->mpa_crc_hd,
+						    (void *)(sge->addr + sge_off),
+					            plen);
 
 			sge_len -= plen;
 			sge_off += plen;
@@ -498,7 +504,8 @@ sge_done:
 	if (c_tx->pad) {
 		*(u32 *)c_tx->trailer.pad = 0;
 		if (do_crc)
-			siw_crc_array(&c_tx->mpa_crc_hd,
+			//siw_crc_array(&c_tx->mpa_crc_hd,
+			crypto_shash_update(&c_tx->mpa_crc_hd,
 				      (u8 *)&c_tx->trailer.crc - c_tx->pad,
 				      c_tx->pad);
 	}

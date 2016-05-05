@@ -149,11 +149,7 @@ struct iwarp_msg_info iwarp_pktinfo[RDMAP_TERMINATE + 1] = { {
 } };
 
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
-static void siw_qp_llp_data_ready(struct sock *sk, int bytes)
-#else
 static void siw_qp_llp_data_ready(struct sock *sk)
-#endif
 {
 	struct siw_qp		*qp;
 
@@ -168,15 +164,9 @@ static void siw_qp_llp_data_ready(struct sock *sk)
 	if (down_read_trylock(&qp->state_lock)) {
 		read_descriptor_t	rd_desc = {.arg.data = qp, .count = 1};
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
-		dprint(DBG_SK|DBG_RX, "(QP%d): "
-			"state (before tcp_read_sock)=%d, bytes=%x\n",
-			QP_ID(qp), qp->attrs.state, bytes);
-#else
 		dprint(DBG_SK|DBG_RX, "(QP%d): "
 			"state (before tcp_read_sock)=%d\n",
 			QP_ID(qp), qp->attrs.state);
-#endif
 
 		if (likely(qp->attrs.state == SIW_QP_STATE_RTS))
 			/*
@@ -187,15 +177,9 @@ static void siw_qp_llp_data_ready(struct sock *sk)
 			 */
 			tcp_read_sock(sk, &rd_desc, siw_tcp_rx_data);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
-		dprint(DBG_SK|DBG_RX, "(QP%d): "
-			"state (after tcp_read_sock)=%d, bytes=%x\n",
-			QP_ID(qp), qp->attrs.state, bytes);
-#else
 		dprint(DBG_SK|DBG_RX, "(QP%d): "
 			"state (after tcp_read_sock)=%d\n",
 			QP_ID(qp), qp->attrs.state);
-#endif
 
 		up_read(&qp->state_lock);
 	} else {
@@ -839,23 +823,23 @@ int siw_check_sgl(struct siw_pd *pd, struct siw_sge *sge,
 	return rv;
 }
 
-int siw_crc_array(struct shash_desc *desc, u8 *start, size_t len)
-{
-	return crypto_shash_update(desc, start, len);
-}
-
-int siw_crc_page(struct shash_desc *desc, struct page *p, int off, int len)
-{
-	int rv;
-	//struct scatterlist t_sg;
-
-	//sg_init_table(&t_sg, 1);
-	//sg_set_page(&t_sg, p, len, off);
-	rv = crypto_shash_update(desc, (u8 *) p + off, len);
-
-	return rv;
-}
-
+//int siw_crc_array(struct shash_desc *desc, u8 *start, size_t len)
+//{
+//	return crypto_shash_update(desc, start, len);
+//}
+//
+//int siw_crc_page(struct shash_desc *desc, struct page *p, int off, int len)
+//{
+//	int rv;
+//	//struct scatterlist t_sg;
+//
+//	//sg_init_table(&t_sg, 1);
+//	//sg_set_page(&t_sg, p, len, off);
+//	rv = crypto_shash_update(desc, (u8 *) p + off, len);
+//
+//	return rv;
+//}
+//
 
 /*
  * siw_sq_flush()
