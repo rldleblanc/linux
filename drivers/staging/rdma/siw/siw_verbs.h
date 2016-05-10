@@ -55,6 +55,7 @@ extern int siw_query_device(struct ib_device *, struct ib_device_attr *,
 extern struct ib_ucontext *siw_alloc_ucontext(struct ib_device *,
 					      struct ib_udata *);
 extern int siw_dealloc_ucontext(struct ib_ucontext *);
+extern int siw_port_immutable(struct ib_device *, u8, struct ib_port_immutable *);
 extern int siw_query_port(struct ib_device *, u8, struct ib_port_attr *);
 extern int siw_query_pkey(struct ib_device *, u8, u16, u16 *);
 extern int siw_query_gid(struct ib_device *, u8, int, union ib_gid *);

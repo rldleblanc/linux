@@ -129,6 +129,24 @@ int siw_dealloc_ucontext(struct ib_ucontext *ofa_ctx)
 	return 0;
 }
 
+int siw_port_immutable(struct ib_device *dev, u8 port_num,
+		       struct ib_port_immutable *immutable)
+{
+	int err;
+	struct ib_port_attr attr;
+
+	err = siw_query_port(dev, port_num, &attr);
+	if (err)
+		return err;
+
+	immutable->pkey_tbl_len = attr.pkey_tbl_len;
+	immutable->gid_tbl_len = attr.gid_tbl_len;
+	immutable->core_cap_flags = RDMA_CORE_PORT_IWARP;
+	immutable->max_mad_size = IB_MGMT_MAD_SIZE;
+
+	return 0;
+}
+
 int siw_query_device(struct ib_device *ofa_dev, struct ib_device_attr *attr,
 		     struct ib_udata *uhw)
 {
