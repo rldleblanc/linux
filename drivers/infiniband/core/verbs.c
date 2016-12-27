@@ -1954,22 +1954,27 @@ static void __ib_drain_sq(struct ib_qp *qp)
 		return;
 	}
 
+	printk("Setting up drain callback.");
 	swr.wr_cqe = &sdrain.cqe;
 	sdrain.cqe.done = ib_drain_qp_done;
+	printk("Starting init_completion.");
 	init_completion(&sdrain.done);
 
+	printk("Calling ib_modify_qp.");
 	ret = ib_modify_qp(qp, &attr, IB_QP_STATE);
 	if (ret) {
 		WARN_ONCE(ret, "failed to drain send queue: %d\n", ret);
 		return;
 	}
 
+	printk("Calling ib_post_send.");
 	ret = ib_post_send(qp, &swr, &bad_swr);
 	if (ret) {
 		WARN_ONCE(ret, "failed to drain send queue: %d\n", ret);
 		return;
 	}
 
+	printk("Starting wait_for_completion.");
 	wait_for_completion(&sdrain.done);
 }
 
