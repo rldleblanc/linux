@@ -61,11 +61,13 @@ static inline long __sched
 do_wait_for_common(struct completion *x,
 		   long (*action)(long), long timeout, int state)
 {
+	//printk("Starting do_wait_for_common with x->done = %d.\n", x->done);
 	if (!x->done) {
 		DECLARE_WAITQUEUE(wait, current);
 
 		__add_wait_queue_tail_exclusive(&x->wait, &wait);
 		do {
+	//		printk("x->done = %d.\n", x->done);
 			if (signal_pending_state(state, current)) {
 				timeout = -ERESTARTSYS;
 				break;
@@ -80,6 +82,7 @@ do_wait_for_common(struct completion *x,
 			return timeout;
 	}
 	x->done--;
+	//printk("Finished do_wait_for_common with x->done = %d.\n", x->done);
 	return timeout ?: 1;
 }
 
@@ -87,11 +90,15 @@ static inline long __sched
 __wait_for_common(struct completion *x,
 		  long (*action)(long), long timeout, int state)
 {
+	//printk("Starting __wait_for_common.\n");
 	might_sleep();
 
 	spin_lock_irq(&x->wait.lock);
+	//printk("Calling do_wait_for_common.\n");
 	timeout = do_wait_for_common(x, action, timeout, state);
+	//printk("Returned from do_wait_for_common.\n");
 	spin_unlock_irq(&x->wait.lock);
+	//printk("Finished __wait_for_common.\n");
 	return timeout;
 }
 
@@ -119,7 +126,9 @@ wait_for_common_io(struct completion *x, long timeout, int state)
  */
 void __sched wait_for_completion(struct completion *x)
 {
+	//printk("Calling wait_for_common.\n");
 	wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_UNINTERRUPTIBLE);
+	//printk("Returned from wait_for_common.\n");
 }
 EXPORT_SYMBOL(wait_for_completion);
 

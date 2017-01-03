@@ -541,6 +541,7 @@ iscsi_iser_conn_stop(struct iscsi_cls_conn *cls_conn, int flag)
 {
 	struct iscsi_conn *conn = cls_conn->dd_data;
 	struct iser_conn *iser_conn = conn->dd_data;
+	printk("Executing iscsi_iser_conn_stop.\n");
 
 	iser_info("stopping iscsi_conn: %p, iser_conn: %p\n", conn, iser_conn);
 
@@ -550,8 +551,11 @@ iscsi_iser_conn_stop(struct iscsi_cls_conn *cls_conn, int flag)
 	 */
 	if (iser_conn) {
 		mutex_lock(&iser_conn->state_mutex);
+		printk("Going to execute iser_conn_terminate.\n");
 		iser_conn_terminate(iser_conn);
+		printk("Finished executing iser_conn_terminate, going to execute iscsi_conn_stop.\n");
 		iscsi_conn_stop(cls_conn, flag);
+		printk("Finished executing iscsi_conn_stop.\n");
 
 		/* unbind */
 		iser_conn->iscsi_conn = NULL;

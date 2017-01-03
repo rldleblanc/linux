@@ -1925,6 +1925,167 @@ next_page:
 }
 EXPORT_SYMBOL(ib_sg_to_pages);
 
+static void process_timeout(unsigned long __data)
+{
+	wake_up_process((struct task_struct *)__data);
+}
+
+/**
+ * schedule_timeout - sleep until timeout
+ * @timeout: timeout value in jiffies
+ *
+ * Make the current task sleep until @timeout jiffies have
+ * elapsed. The routine will return immediately unless
+ * the current task state has been set (see set_current_state()).
+ *
+ * You can set the task state as follows -
+ *
+ * %TASK_UNINTERRUPTIBLE - at least @timeout jiffies are guaranteed to
+ * pass before the routine returns. The routine will return 0
+ *
+ * %TASK_INTERRUPTIBLE - the routine may return early if a signal is
+ * delivered to the current task. In this case the remaining time
+ * in jiffies will be returned, or 0 if the timer expired in time
+ *
+ * The current task state is guaranteed to be TASK_RUNNING when this
+ * routine returns.
+ *
+ * Specifying a @timeout value of %MAX_SCHEDULE_TIMEOUT will schedule
+ * the CPU away without a bound on the timeout. In this case the return
+ * value will be %MAX_SCHEDULE_TIMEOUT.
+ *
+ * In all cases the return value is guaranteed to be non-negative.
+ */
+signed long __sched schedule_timeout(signed long timeout)
+{
+	struct timer_list timer;
+	unsigned long expire;
+
+	printk("Starting schedule_timeout with timeout %lx (%lx).\n", timeout, MAX_SCHEDULE_TIMEOUT);
+	switch (timeout)
+	{
+	case MAX_SCHEDULE_TIMEOUT:
+		/*
+		 * These two special cases are useful to be comfortable
+		 * in the caller. Nothing more. We could take
+		 * MAX_SCHEDULE_TIMEOUT from one of the negative value
+		 * but I' d like to return a valid offset (>=0) to allow
+		 * the caller to do everything it want with the retval.
+		 */
+		printk("Starting schedule() in switch.\n");
+		schedule();
+		printk("Finished schedule() in switch.\n");
+		goto out;
+	default:
+		/*
+		 * Another bit of PARANOID. Note that the retval will be
+		 * 0 since no piece of kernel is supposed to do a check
+		 * for a negative retval of schedule_timeout() (since it
+		 * should never happens anyway). You just have the printk()
+		 * that will tell you if something is gone wrong and where.
+		 */
+		if (timeout < 0) {
+			printk(KERN_ERR "schedule_timeout: wrong timeout "
+				"value %lx\n", timeout);
+			dump_stack();
+			current->state = TASK_RUNNING;
+			goto out;
+		}
+	}
+
+	expire = timeout + jiffies;
+
+	setup_timer_on_stack(&timer, process_timeout, (unsigned long)current);
+	mod_timer(&timer, expire);
+	printk("Starting schedule().\n");
+	schedule();
+	del_singleshot_timer_sync(&timer);
+
+	printk("Starting destroy_timer_on_stack.\n");
+	/* Remove the timer from the object tracker */
+	destroy_timer_on_stack(&timer);
+
+	timeout = expire - jiffies;
+
+ out:
+	return timeout < 0 ? 0 : timeout;
+}
+
+static inline long __sched
+do_wait_for_common(struct completion *x,
+		   long (*action)(long), long timeout, int state)
+{
+	printk("Starting do_wait_for_common with x->done = %d.\n", x->done);
+	if (!x->done) {
+		DECLARE_WAITQUEUE(wait, current);
+
+		__add_wait_queue_tail_exclusive(&x->wait, &wait);
+		do {
+			printk("x->done = %d.\n", x->done);
+			if (signal_pending_state(state, current)) {
+				timeout = -ERESTARTSYS;
+				printk("In signal_pending_state with timeout = %ld.\n", timeout);
+				break;
+			}
+			printk("Calling __set_current_state.\n");
+			__set_current_state(state);
+			printk("Calling spin_unlock_irq.\n");
+			spin_unlock_irq(&x->wait.lock);
+			printk("Calling action(%lx).\n",timeout);
+			timeout = action(timeout);
+			printk("Calling spin_lock_irq.\n");
+			spin_lock_irq(&x->wait.lock);
+		} while (!x->done && timeout);
+		printk("Calling __remove_wait_queue.\n");
+		__remove_wait_queue(&x->wait, &wait);
+		printk("Returned from __remove_wait_queue.\n");
+		if (!x->done)
+			return timeout;
+	}
+	x->done--;
+	printk("Finished do_wait_for_common with x->done = %d.\n", x->done);
+	return timeout ?: 1;
+}
+
+static inline long __sched
+__wait_for_common(struct completion *x,
+		  long (*action)(long), long timeout, int state)
+{
+	printk("Starting __wait_for_common.\n");
+	might_sleep();
+
+	spin_lock_irq(&x->wait.lock);
+	printk("Calling do_wait_for_common.\n");
+	timeout = do_wait_for_common(x, action, timeout, state);
+	printk("Returned from do_wait_for_common.\n");
+	spin_unlock_irq(&x->wait.lock);
+	printk("Finished __wait_for_common.\n");
+	return timeout;
+}
+
+static long __sched
+wait_for_common(struct completion *x, long timeout, int state)
+{
+	return __wait_for_common(x, schedule_timeout, timeout, state);
+}
+
+/**
+ * wait_for_completion: - waits for completion of a task
+ * @x:  holds the state of this particular completion
+ *
+ * This waits to be signaled for completion of a specific task. It is NOT
+ * interruptible and there is no timeout.
+ *
+ * See also similar routines (i.e. wait_for_completion_timeout()) with timeout
+ * and interrupt capability. Also see complete().
+ */
+void __sched wait_for_completion(struct completion *x)
+{
+	printk("Calling wait_for_common.\n");
+	wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_UNINTERRUPTIBLE);
+	printk("Returned from wait_for_common.\n");
+}
+
 struct ib_drain_cqe {
 	struct ib_cqe cqe;
 	struct completion done;
@@ -1934,7 +2095,7 @@ static void ib_drain_qp_done(struct ib_cq *cq, struct ib_wc *wc)
 {
 	struct ib_drain_cqe *cqe = container_of(wc->wr_cqe, struct ib_drain_cqe,
 						cqe);
-
+	printk("ib_drain_qp_done going to call complete.\n");
 	complete(&cqe->done);
 }
 
@@ -1943,7 +2104,7 @@ static void ib_drain_qp_done(struct ib_cq *cq, struct ib_wc *wc)
  */
 static void __ib_drain_sq(struct ib_qp *qp)
 {
-	struct ib_qp_attr attr = { .qp_state = IB_QPS_ERR };
+	struct ib_qp_attr attr = { .qp_state = IB_QPS_ERR};
 	struct ib_drain_cqe sdrain;
 	struct ib_send_wr swr = {}, *bad_swr;
 	int ret;
@@ -1954,28 +2115,30 @@ static void __ib_drain_sq(struct ib_qp *qp)
 		return;
 	}
 
-	printk("Setting up drain callback.");
+	printk("Setting up drain callback.\n");
 	swr.wr_cqe = &sdrain.cqe;
 	sdrain.cqe.done = ib_drain_qp_done;
-	printk("Starting init_completion.");
+	printk("Starting init_completion.\n");
 	init_completion(&sdrain.done);
 
-	printk("Calling ib_modify_qp.");
+	printk("Calling ib_modify_qp.\n");
 	ret = ib_modify_qp(qp, &attr, IB_QP_STATE);
 	if (ret) {
 		WARN_ONCE(ret, "failed to drain send queue: %d\n", ret);
 		return;
 	}
 
-	printk("Calling ib_post_send.");
+	printk("Calling ib_post_send.\n");
 	ret = ib_post_send(qp, &swr, &bad_swr);
 	if (ret) {
 		WARN_ONCE(ret, "failed to drain send queue: %d\n", ret);
 		return;
 	}
 
-	printk("Starting wait_for_completion.");
+	printk("Calling wait_for_completion.\n");
+	printk("&sdrain.done->done = %d.\n", sdrain.done.done);
 	wait_for_completion(&sdrain.done);
+	printk("Returned from wait_for_completion.\n");
 }
 
 /*
@@ -2038,7 +2201,10 @@ void ib_drain_sq(struct ib_qp *qp)
 	if (qp->device->drain_sq)
 		qp->device->drain_sq(qp);
 	else
+	{
+		printk("ib_drain_sq calling __ib_drain_sq.\n");
 		__ib_drain_sq(qp);
+	}
 }
 EXPORT_SYMBOL(ib_drain_sq);
 
@@ -2089,6 +2255,7 @@ EXPORT_SYMBOL(ib_drain_rq);
  */
 void ib_drain_qp(struct ib_qp *qp)
 {
+	printk("ib_drain_qp calling ib_drain_sq.\n");
 	ib_drain_sq(qp);
 	if (!qp->srq)
 		ib_drain_rq(qp);

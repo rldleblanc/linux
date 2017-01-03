@@ -4089,6 +4089,7 @@ int iscsit_close_connection(
 	int conn_logout = (conn->conn_state == TARG_CONN_STATE_IN_LOGOUT);
 	struct iscsi_session	*sess = conn->sess;
 
+	printk("Starting iscsit_close_connection.\n");
 	pr_debug("Closing iSCSI connection CID %hu on SID:"
 		" %u\n", conn->cid, sess->sid);
 	/*
@@ -4253,6 +4254,7 @@ int iscsit_close_connection(
 	     !atomic_read(&sess->session_logout))
 		atomic_set(&sess->session_fall_back_to_erl0, 1);
 
+	printk("Ready to return from iscsct_close_connection.\n");
 	/*
 	 * If this was not the last connection in the session, and we are
 	 * performing session reinstatement or falling back to ERL=0, call

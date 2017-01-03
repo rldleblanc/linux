@@ -2595,7 +2595,10 @@ static void isert_wait_conn(struct iscsi_conn *conn)
 	isert_conn_terminate(isert_conn);
 	mutex_unlock(&isert_conn->mutex);
 
+	printk("isert_wait_conn calling ib_drain_qp.\n");
 	ib_drain_qp(isert_conn->qp);
+	printk("isert_wait_conn finished ib_drain_qp.\n");
+
 	isert_put_unsol_pending_cmds(conn);
 	isert_wait4cmds(conn);
 	isert_wait4logout(isert_conn);
@@ -2607,7 +2610,10 @@ static void isert_free_conn(struct iscsi_conn *conn)
 {
 	struct isert_conn *isert_conn = conn->context;
 
+	printk("isert_free_conn calling ib_close/drain_qp.\n");
+	//ib_close_qp(isert_conn->qp);
 	ib_drain_qp(isert_conn->qp);
+	printk("isert_free_conn finished ib_close/drain_qp.\n");
 	isert_put_conn(isert_conn);
 }
 

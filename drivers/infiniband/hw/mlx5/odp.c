@@ -715,7 +715,9 @@ void mlx5_ib_qp_disable_pagefaults(struct mlx5_ib_qp *qp)
 	 * work queue elements will be posted to the work queue with
 	 * the QP we are closing.
 	 */
+	printk("Calling flush_workqueue.\n");
 	flush_workqueue(mlx5_ib_page_fault_wq);
+	printk("Returned from flush_workqueue.\n");
 }
 
 void mlx5_ib_qp_enable_pagefaults(struct mlx5_ib_qp *qp)

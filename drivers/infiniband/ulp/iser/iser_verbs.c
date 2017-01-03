@@ -655,6 +655,7 @@ int iser_conn_terminate(struct iser_conn *iser_conn)
 {
 	struct ib_conn *ib_conn = &iser_conn->ib_conn;
 	int err = 0;
+	printk("Executing iser_conn_terminate...\n");
 
 	/* terminate the iser conn only if the conn state is UP */
 	if (!iser_conn_state_comp_exch(iser_conn, ISER_CONN_UP,
@@ -673,13 +674,16 @@ int iser_conn_terminate(struct iser_conn *iser_conn)
 	 * state to ERROR.
 	 */
 	if (ib_conn->cma_id) {
+		printk("Calling rdma_disconnect.\n");
 		err = rdma_disconnect(ib_conn->cma_id);
 		if (err)
 			iser_err("Failed to disconnect, conn: 0x%p err %d\n",
 				 iser_conn, err);
 
 		/* block until all flush errors are consumed */
+		printk("Calling ib_drain_sq.\n");
 		ib_drain_sq(ib_conn->qp);
+		printk("Returned from ib_drain_sq.\n");
 	}
 
 	return 1;
