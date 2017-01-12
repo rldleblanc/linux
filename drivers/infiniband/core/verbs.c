@@ -2261,3 +2261,21 @@ void ib_drain_qp(struct ib_qp *qp)
 		ib_drain_rq(qp);
 }
 EXPORT_SYMBOL(ib_drain_qp);
+
+void ib_reset_sq(struct ib_qp *qp)
+{
+	struct ib_qp_attr attr = { .qp_state = IB_QPS_RESET};
+	int ret;
+
+	printk("ib_reset_sq calling ib_modify_qp.\n");
+	ret = ib_modify_qp(qp, &attr, IB_QP_STATE);
+	printk("ib_reset_sq returned from ib_modify_qp with return code %d.\n" , ret);
+}
+EXPORT_SYMBOL(ib_reset_sq);
+
+void ib_reset_qp(struct ib_qp *qp)
+{
+	printk("ib_reset_qp calling ib_reset_sq.\n");
+	ib_reset_sq(qp);
+}
+EXPORT_SYMBOL(ib_reset_qp);

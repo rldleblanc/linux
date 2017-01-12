@@ -2657,12 +2657,16 @@ void target_wait_for_sess_cmds(struct se_session *se_sess)
 
 	list_for_each_entry_safe(se_cmd, tmp_cmd,
 				&se_sess->sess_wait_list, se_cmd_list) {
+		printk("Waiting for se_cmd: %p t_state: %d, fabric state:"
+			" %d\n", se_cmd, se_cmd->t_state,
+			se_cmd->se_tfo->get_cmd_state(se_cmd));
 		pr_debug("Waiting for se_cmd: %p t_state: %d, fabric state:"
 			" %d\n", se_cmd, se_cmd->t_state,
 			se_cmd->se_tfo->get_cmd_state(se_cmd));
 
 		spin_lock_irqsave(&se_cmd->t_state_lock, flags);
 		tas = (se_cmd->transport_state & CMD_T_TAS);
+		printk("target_wait_for_sess_cmds calling spin_unlock_irqrestore.\n");
 		spin_unlock_irqrestore(&se_cmd->t_state_lock, flags);
 
 		if (!target_put_sess_cmd(se_cmd)) {
@@ -2670,7 +2674,11 @@ void target_wait_for_sess_cmds(struct se_session *se_sess)
 				target_put_sess_cmd(se_cmd);
 		}
 
+		printk("target_wait_for_sess_cmds calling wait_for_completion.\n");
 		wait_for_completion(&se_cmd->cmd_wait_comp);
+		printk("After cmd_wait_comp: se_cmd: %p t_state: %d"
+			" fabric state: %d\n", se_cmd, se_cmd->t_state,
+			se_cmd->se_tfo->get_cmd_state(se_cmd));
 		pr_debug("After cmd_wait_comp: se_cmd: %p t_state: %d"
 			" fabric state: %d\n", se_cmd, se_cmd->t_state,
 			se_cmd->se_tfo->get_cmd_state(se_cmd));

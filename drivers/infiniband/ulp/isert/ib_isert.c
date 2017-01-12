@@ -2545,8 +2545,12 @@ isert_wait4cmds(struct iscsi_conn *conn)
 	isert_info("iscsi_conn %p\n", conn);
 
 	if (conn->sess) {
+		printk("isert_wait4cmds calling target_sess_cmd_list_set_waiting.\n");
 		target_sess_cmd_list_set_waiting(conn->sess->se_sess);
+		printk("isert_wait4cmds returned from target_sess_cmd_list_set_waiting.\n");
+		printk("isert_wait4cmds calling target_wait_for_sess_cmds.\n");
 		target_wait_for_sess_cmds(conn->sess->se_sess);
+		printk("isert_wait4cmds returned from target_wait_for_sess_cmds.\n");
 	}
 }
 
@@ -2596,15 +2600,30 @@ static void isert_wait_conn(struct iscsi_conn *conn)
 	mutex_unlock(&isert_conn->mutex);
 
 	printk("isert_wait_conn calling ib_close_qp/ib_drain_qp.\n");
-	ib_close_qp(isert_conn->qp);
+	ib_reset_qp(isert_conn->qp);
+	//ib_close_qp(isert_conn->qp);
 	//ib_drain_qp(isert_conn->qp);
 	printk("isert_wait_conn finished ib_close_qp/ib_drain_qp.\n");
 
+	printk("isert_wait_conn calling isert_put_unsol_pending_cmds.\n");
 	isert_put_unsol_pending_cmds(conn);
-	isert_wait4cmds(conn);
-	isert_wait4logout(isert_conn);
+	printk("isert_wait_conn returned from isert_put_unsol_pending_cmds.\n");
 
+	printk("isert_wait_conn calling cancel_work_sync.\n");
+	cancel_work_sync(&isert_conn->release_work);
+	printk("isert_wait_conn returned from cancel_work_sync.\n");
+
+	//printk("isert_wait_conn calling isert_wait4cmds.\n");
+	//isert_wait4cmds(conn);
+	//printk("isert_wait_conn returned from isert_wait4cmds.\n");
+	//printk("isert_wait_conn calling isert_wait4logout.\n");
+	//isert_wait4logout(isert_conn);
+	//printk("isert_wait_conn returned from isert_wait4logout.\n");
+
+	printk("isert_wait_conn calling queue_work.\n");
 	queue_work(isert_release_wq, &isert_conn->release_work);
+	printk("isert_wait_conn returned from queue_work.\n");
+
 }
 
 static void isert_free_conn(struct iscsi_conn *conn)
@@ -2612,8 +2631,8 @@ static void isert_free_conn(struct iscsi_conn *conn)
 	struct isert_conn *isert_conn = conn->context;
 
 	printk("isert_free_conn calling drain_qp.\n");
-	//ib_close_qp(isert_conn->qp);
-	ib_drain_qp(isert_conn->qp);
+	ib_close_qp(isert_conn->qp);
+	//ib_drain_qp(isert_conn->qp);
 	printk("isert_free_conn finished drain_qp.\n");
 	isert_put_conn(isert_conn);
 }

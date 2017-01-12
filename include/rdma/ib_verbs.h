@@ -3357,4 +3357,6 @@ int ib_sg_to_pages(struct ib_mr *mr, struct scatterlist *sgl, int sg_nents,
 void ib_drain_rq(struct ib_qp *qp);
 void ib_drain_sq(struct ib_qp *qp);
 void ib_drain_qp(struct ib_qp *qp);
+void ib_reset_sq(struct ib_qp *qp);
+void ib_reset_qp(struct ib_qp *qp);
 #endif /* IB_VERBS_H */
