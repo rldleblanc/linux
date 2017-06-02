@@ -2815,6 +2815,23 @@ static int iscsi_if_ep_connect(struct iscsi_transport *transport,
 	} else
 		non_blocking = ev->u.ep_connect.non_blocking;
 
+	//int i;
+	//printk("ev from userspace:\n");
+	//for (i= 0; i < sizeof(*ev); i++) {
+	//	printk(KERN_CONT "%02x ", ((char *)ev)[i]);
+	//}
+	//printk("\n");
+	//printk("dst_addr from userspace:\n");
+	//for (i= sizeof(*ev); i < sizeof(*ev) + sizeof(*dst_addr); i++) {
+	//	printk(KERN_CONT "%02x ", ((char *)ev)[i]);
+	//}
+	//printk("\n");
+	//printk("iface from userspace:\n");
+	//for (i= sizeof(*ev) + sizeof(*dst_addr); i < sizeof(*ev) + sizeof(*dst_addr) + sizeof(*iface); i++) {
+	//	printk(KERN_CONT "%02x ", ((char *)ev)[i]);
+	//}
+	//printk("\n");
+
 	dst_addr = (struct sockaddr_storage *)((char*)ev + sizeof(*ev));
 	iface = (struct iface_rec *)((char*)ev + sizeof(*ev) + sizeof(*dst_addr));
 	ep = transport->ep_connect(shost, dst_addr, non_blocking, iface);

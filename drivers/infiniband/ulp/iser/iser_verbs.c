@@ -954,6 +954,8 @@ int iser_connect(struct iser_conn   *iser_conn,
 	sprintf(iser_conn->name, "%pISp", dst_addr);
 
 	iser_info("connecting to: %s\n", iser_conn->name);
+	iser_err("connecting to: %s @ %pIS\n", iser_conn->name, dst_addr);
+	iser_err("connecting from: %pIS\n", src_addr);
 
 	/* the device is known only --after-- address resolution */
 	ib_conn->device = NULL;

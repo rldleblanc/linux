@@ -599,6 +599,7 @@ static int cma_translate_addr(struct sockaddr *addr, struct rdma_dev_addr *dev_a
 {
 	int ret;
 
+	printk("Starting cma_translate_addr with address: %d, %pI4\n", ((struct sockaddr_in *)addr)->sin_family, &((struct sockaddr_in *)addr)->sin_addr);
 	if (addr->sa_family != AF_IB) {
 		ret = rdma_translate_ip(addr, dev_addr, NULL);
 	} else {
@@ -2905,6 +2906,7 @@ int rdma_resolve_addr(struct rdma_cm_id *id, struct sockaddr *src_addr,
 		return -EINVAL;
 	}
 
+	printk("rdma_resolve_addr/start resolve_ip\n");
 	atomic_inc(&id_priv->refcount);
 	if (cma_any_addr(dst_addr)) {
 		ret = cma_resolve_loopback(id_priv);
@@ -3321,21 +3323,26 @@ int rdma_bind_addr(struct rdma_cm_id *id, struct sockaddr *addr)
 	if (!cma_comp_exch(id_priv, RDMA_CM_IDLE, RDMA_CM_ADDR_BOUND))
 		return -EINVAL;
 
+	printk("Calling cma_check_linklocal\n");
 	ret = cma_check_linklocal(&id->route.addr.dev_addr, addr);
 	if (ret)
 		goto err1;
 
+	printk("Calling cma_any_addr\n");
 	memcpy(cma_src_addr(id_priv), addr, rdma_addr_size(addr));
 	if (!cma_any_addr(addr)) {
+		printk("Calling cma_translate_addr\n");
 		ret = cma_translate_addr(addr, &id->route.addr.dev_addr);
 		if (ret)
 			goto err1;
 
+		printk("Calling cma_acquire_dev\n");
 		ret = cma_acquire_dev(id_priv, NULL);
 		if (ret)
 			goto err1;
 	}
 
+	printk("Setting afonly\n");
 	if (!(id_priv->options & (1 << CMA_OPTION_AFONLY))) {
 		if (addr->sa_family == AF_INET)
 			id_priv->afonly = 1;
@@ -3347,6 +3354,7 @@ int rdma_bind_addr(struct rdma_cm_id *id, struct sockaddr *addr)
 		}
 #endif
 	}
+	printk("Calling cma_get_port\n");
 	ret = cma_get_port(id_priv);
 	if (ret)
 		goto err2;
@@ -3360,6 +3368,7 @@ err2:
 		cma_release_dev(id_priv);
 err1:
 	cma_comp_exch(id_priv, RDMA_CM_ADDR_BOUND, RDMA_CM_IDLE);
+	printk("rdma_bind_addr had an error %d\n", ret);
 	return ret;
 }
 EXPORT_SYMBOL(rdma_bind_addr);

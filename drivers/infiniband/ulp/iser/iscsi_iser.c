@@ -818,6 +818,10 @@ iscsi_iser_ep_connect(struct Scsi_Host *shost, struct sockaddr_storage *dst_addr
 	struct sockaddr_storage src_addr;
 	struct sockaddr_in *tmp_addr;
 	struct sockaddr_in6 *tmp_addr6;
+	//struct sockaddr_in s_addr;
+	//memset(&s_addr, 0, sizeof(s_addr));
+	//s_addr.sin_family = AF_INET;
+	//s_addr.sin_addr.s_addr = in_aton("192.168.13.14");
 	memset(&src_addr, 0, sizeof(src_addr));
 
 	ep = iscsi_create_endpoint(0);
@@ -833,8 +837,12 @@ iscsi_iser_ep_connect(struct Scsi_Host *shost, struct sockaddr_storage *dst_addr
 	ep->dd_data = iser_conn;
 	iser_conn->ep = ep;
 	iser_conn_init(iser_conn);
+	//err = iser_connect(iser_conn, NULL, dst_addr, non_blocking);
+	printk("Going to check for an iface %pF\n", iface);
 	if (iface && iface->ipaddress[0]) {
+		printk("Found an iface to check %pF, %s\n", iface->ipaddress, iface->ipaddress);
 		if (strchr(iface->ipaddress, ':')) {
+			printk("Found an IPv6 address\n");
 			tmp_addr6 = (struct sockaddr_in6 *)&src_addr;
 			tmp_addr6->sin6_family = AF_INET6;
 			if(!in6_pton(iface->ipaddress, -1,
@@ -843,17 +851,25 @@ iscsi_iser_ep_connect(struct Scsi_Host *shost, struct sockaddr_storage *dst_addr
 				err = -EINVAL;
 				goto failure;
 			}
+			printk("Source IP: %pI6\n", tmp_addr6->sin6_addr.s6_addr);
 		} else {
+			printk("Found an IPv4 address\n");
 			tmp_addr = (struct sockaddr_in *)&src_addr;
+			printk("Going to set the sin_family\n");
+			printk("tmp_addr: %pF\n", tmp_addr);
 			tmp_addr->sin_family = AF_INET;
+			printk("Going to convert the IPv4 address\n");
 			if (!in4_pton(iface->ipaddress, -1,
 				 (u8 *)&tmp_addr->sin_addr.s_addr,
 				 -1, NULL)) {
 				err = -EINVAL;
 				goto failure;
 			}
+			printk("Going to print out the address\n");
+			printk("Source IP: %pI4\n", &tmp_addr->sin_addr.s_addr);
 		}
 	}
+	printk("Going to call iser_connect\n");
 	err = iser_connect(iser_conn, &src_addr, dst_addr, non_blocking);
 	if (err)
 		goto failure;
