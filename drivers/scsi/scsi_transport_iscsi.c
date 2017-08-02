@@ -69,6 +69,13 @@ MODULE_PARM_DESC(debug_conn,
 					      __func__, ##arg);	\
 	} while (0);
 
+static int o_src_addr = 0;
+module_param_named(offload_src_binding, o_src_addr, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(offload_src_binding,
+		  "Enable allowing iSCSI offload drivers (iSER) to bind to a "
+		  "source IP. Requires an appropriately patched iscsiadm that "
+		  "passes the source IP address to the kernel.");
+
 struct iscsi_internal {
 	struct scsi_transport_template t;
 	struct iscsi_transport *iscsi_transport;
@@ -2802,6 +2809,7 @@ static int iscsi_if_ep_connect(struct iscsi_transport *transport,
 {
 	struct iscsi_endpoint *ep;
 	struct sockaddr *dst_addr;
+	struct sockaddr_storage *src_addr = NULL;
 	struct Scsi_Host *shost = NULL;
 	int non_blocking, err = 0;
 
@@ -2821,7 +2829,19 @@ static int iscsi_if_ep_connect(struct iscsi_transport *transport,
 		non_blocking = ev->u.ep_connect.non_blocking;
 
 	dst_addr = (struct sockaddr *)((char*)ev + sizeof(*ev));
-	ep = transport->ep_connect(shost, dst_addr, non_blocking);
+	if (o_src_addr) {
+		if (dst_addr->sa_family == PF_INET) {
+			src_addr = (struct sockaddr_storage *)((char *)ev +
+				    sizeof(*ev) + sizeof(struct sockaddr_in));
+		} else if (dst_addr->sa_family == PF_INET6) {
+			src_addr = (struct sockaddr_storage *)((char *)ev +
+				    sizeof(*ev) + sizeof(struct sockaddr_in6));
+		}
+		if (src_addr && src_addr->ss_family != AF_INET &&
+		    src_addr->ss_family != AF_INET6)
+			src_addr = NULL;
+	}
+	ep = transport->ep_connect(shost, dst_addr, non_blocking, src_addr);
 	if (IS_ERR(ep)) {
 		err = PTR_ERR(ep);
 		goto release_host;
