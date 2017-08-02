@@ -2466,7 +2466,8 @@ EXPORT_SYMBOL_GPL(cxgbi_get_host_param);
 
 struct iscsi_endpoint *cxgbi_ep_connect(struct Scsi_Host *shost,
 					struct sockaddr *dst_addr,
-					int non_blocking)
+					int non_blocking,
+					struct sockaddr_storage *src_addr)
 {
 	struct iscsi_endpoint *ep;
 	struct cxgbi_endpoint *cep;
