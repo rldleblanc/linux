@@ -808,7 +808,7 @@ static int iscsi_iser_get_ep_param(struct iscsi_endpoint *ep,
  */
 static struct iscsi_endpoint *
 iscsi_iser_ep_connect(struct Scsi_Host *shost, struct sockaddr *dst_addr,
-		      int non_blocking)
+		      int non_blocking, struct sockaddr_storage *src_addr)
 {
 	int err;
 	struct iser_conn *iser_conn;
@@ -828,7 +828,8 @@ iscsi_iser_ep_connect(struct Scsi_Host *shost, struct sockaddr *dst_addr,
 	iser_conn->ep = ep;
 	iser_conn_init(iser_conn);
 
-	err = iser_connect(iser_conn, NULL, dst_addr, non_blocking);
+	err = iser_connect(iser_conn, (struct sockaddr *)src_addr, dst_addr,
+		           non_blocking);
 	if (err)
 		goto failure;
 
