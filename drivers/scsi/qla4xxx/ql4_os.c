@@ -120,7 +120,8 @@ static int qla4xxx_get_iface_param(struct iscsi_iface *iface,
 static enum blk_eh_timer_return qla4xxx_eh_cmd_timed_out(struct scsi_cmnd *sc);
 static struct iscsi_endpoint *qla4xxx_ep_connect(struct Scsi_Host *shost,
 						 struct sockaddr *dst_addr,
-						 int non_blocking);
+						 int non_blocking,
+						 struct sockaddr_storage *src_addr);
 static int qla4xxx_ep_poll(struct iscsi_endpoint *ep, int timeout_ms);
 static void qla4xxx_ep_disconnect(struct iscsi_endpoint *ep);
 static int qla4xxx_get_ep_param(struct iscsi_endpoint *ep,
@@ -1657,7 +1658,7 @@ static int qla4xxx_get_iface_param(struct iscsi_iface *iface,
 
 static struct iscsi_endpoint *
 qla4xxx_ep_connect(struct Scsi_Host *shost, struct sockaddr *dst_addr,
-		   int non_blocking)
+		   int non_blocking, struct sockaddr_storage *src_addr)
 {
 	int ret;
 	struct iscsi_endpoint *ep;
@@ -6573,7 +6574,7 @@ static struct iscsi_endpoint *qla4xxx_get_ep_fwdb(struct scsi_qla_host *ha,
 		addr->sin_port = htons(le16_to_cpu(fw_ddb_entry->port));
 	}
 
-	ep = qla4xxx_ep_connect(ha->host, (struct sockaddr *)dst_addr, 0);
+	ep = qla4xxx_ep_connect(ha->host, (struct sockaddr *)dst_addr, 0, NULL);
 	vfree(dst_addr);
 	return ep;
 }

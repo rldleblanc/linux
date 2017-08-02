@@ -1772,7 +1772,8 @@ static int bnx2i_tear_down_conn(struct bnx2i_hba *hba,
  */
 static struct iscsi_endpoint *bnx2i_ep_connect(struct Scsi_Host *shost,
 					       struct sockaddr *dst_addr,
-					       int non_blocking)
+					       int non_blocking,
+					       struct sockaddr_storage *src_addr)
 {
 	u32 iscsi_cid = BNX2I_CID_RESERVED;
 	struct sockaddr_in *desti = (struct sockaddr_in *) dst_addr;
