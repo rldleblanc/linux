@@ -1161,7 +1161,7 @@ static int beiscsi_open_conn(struct iscsi_endpoint *ep,
  */
 struct iscsi_endpoint *
 beiscsi_ep_connect(struct Scsi_Host *shost, struct sockaddr *dst_addr,
-		   int non_blocking)
+		   int non_blocking, struct sockaddr_storage *src_addr)
 {
 	struct beiscsi_hba *phba;
 	struct beiscsi_endpoint *beiscsi_ep;

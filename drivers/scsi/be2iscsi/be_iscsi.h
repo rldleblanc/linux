@@ -74,7 +74,8 @@ int beiscsi_conn_start(struct iscsi_cls_conn *cls_conn);
 
 struct iscsi_endpoint *beiscsi_ep_connect(struct Scsi_Host *shost,
 					  struct sockaddr *dst_addr,
-					  int non_blocking);
+					  int non_blocking,
+					  struct sockaddr_storage *src_addr);
 
 int beiscsi_ep_poll(struct iscsi_endpoint *ep, int timeout_ms);
 
